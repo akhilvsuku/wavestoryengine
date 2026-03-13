@@ -4,11 +4,17 @@
 #include <limits.h>
 #include <stdlib.h>
 #include "Logger.h" 
+// SignInSignUp class for authentication
+#include "auth/SignInSignUp.h"
+#include "auth/MySqlUserStore.h"
 
 namespace fs = std::filesystem;
 
 receivermain::receivermain()
 {
+    // initialize authentication handler with MySQL store
+    auto store = std::make_unique<MySqlUserStore>("localhost", "dbuser", "dbpass", "dbname");
+    m_auth = new SignInSignUp(std::move(store));
 }
 
 void receivermain::receiver_controller()
