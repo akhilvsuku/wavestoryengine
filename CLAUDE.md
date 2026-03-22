@@ -6,21 +6,7 @@ WaveStory Engine is the C++ based backend web server for an editor application. 
 
 ## Architecture
 
-```
-wavestoryengine/
-├── wstory.cpp            # Entry point — instantiates receivermain
-├── receivermain.h/.cpp   # HTTP route handlers (port 8080)
-├── auth/                 # Authentication subsystem
-│   ├── IUserStore.h      # Abstract interface for user persistence
-│   ├── SignInSignUp.h/.cpp   # Business logic, SHA256 password hashing
-│   ├── MySqlUserStore.h/.cpp # MySQL implementation of IUserStore
-│   └── users_table_schema.sql
-├── common/               # Shared utilities
-│   ├── Logger.h/.cpp     # Singleton async logger (thread-safe)
-│   └── SharedVector.h    # Thread-safe vector template (used by Logger)
-└── httplib/
-    └── httplib.h         # cpp-httplib v0.18.5 (single-header, bundled)
-```
+See **[ARCHITECTURE.md](ARCHITECTURE.md)** for module map, startup sequence, auth layered design, logging internals, threading model, and extension points.
 
 ## Build System
 
@@ -58,23 +44,13 @@ make clean    # Remove object files and binary
 
 ## Key Patterns
 
-### Dependency Injection (auth layer)
-`SignInSignUp` takes a `std::unique_ptr<IUserStore>` — swap `MySqlUserStore` for any other implementation.
+For internal design patterns, auth layered architecture, logging internals, threading model, and extension points see **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
-### Singleton Logger
+### Logger usage (quick reference)
 ```cpp
 Logger::getInstance().Log(Logger::Level::INFO, "message");
 Logger::getInstance().SetPrintToConsole(true);
 ```
-
-### Thread-Safe Queue
-`SharedVector<T>` wraps `std::vector` with a mutex; used by Logger for async file I/O.
-
-### Authentication Flow
-1. `receivermain` constructs `MySqlUserStore` with DB credentials
-2. Passes ownership to `SignInSignUp`
-3. Endpoint handlers call `m_auth->signin()` / `m_auth->signup()`
-4. Passwords stored as SHA256 hex digests via OpenSSL
 
 ## Database Schema
 
