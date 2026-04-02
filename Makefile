@@ -1,10 +1,12 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++17 -I./httplib -Wall -Wextra -pthread
-LDFLAGS += -pthread
+INC_DIR = -I./httplib -I./common -I./auth
+CXXFLAGS = -std=c++17 $(INC_DIR) -Wall -Wextra -pthread
+LDFLAGS += -pthread -lssl -lcrypto -lmysqlclient
 
 # Source and output
-SRCS = wstory.cpp receivermain.cpp
+SRCS = wstory.cpp receivermain.cpp common/Logger.cpp \
+       auth/SignInSignUp.cpp auth/MySqlUserStore.cpp
 OBJS = $(SRCS:.cpp=.o)
 TARGET = wstory
 

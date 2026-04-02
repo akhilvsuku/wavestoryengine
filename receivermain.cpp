@@ -3,31 +3,23 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdlib.h>
+#include "Logger.h" 
+// SignInSignUp class for authentication
+#include "auth/SignInSignUp.h"
+#include "auth/MySqlUserStore.h"
 
 namespace fs = std::filesystem;
 
-std::string trav_print(std::string str_path) {
-	std::string path = str_path; // current directory
-	std::string str_out = ""; // current directory
-
-    try {
-        for (const auto& entry : fs::directory_iterator(path)) {
-            if (fs::is_directory(entry.status())) {
-                str_out += " -> " + entry.path().string();
-            }
-        }
-    } catch (const fs::filesystem_error& e) {
-        str_out += "Filesystem error: " + std::string(e.what());
-    }
-}
-
 receivermain::receivermain()
 {
+    // initialize authentication handler with MySQL store
+    auto store = std::make_unique<MySqlUserStore>("localhost", "dbuser", "dbpass", "dbname");
+    m_auth = new SignInSignUp(std::move(store));
 }
 
 void receivermain::receiver_controller()
 {
-
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::receiver_controller");
     m_svr.Get("/version", [this](const httplib::Request& req, httplib::Response& res) {
         process_version( req, res);
         });
@@ -53,12 +45,13 @@ void receivermain::receiver_controller()
 
 void receivermain::process_version(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::process_version");
     res.set_content("v1.0.02", "text/plain");
-
 }
 
 void receivermain::singin_signup(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::singin_signup");
     std::string str_uname = "";
     std::string str_pwrd = "";
     if (req.has_param("username")) {
@@ -75,6 +68,7 @@ void receivermain::singin_signup(const httplib::Request& req, httplib::Response&
 
 void receivermain::fetch_search(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::fetch_search");
     std::string str_uname = "";
     std::string str_pwrd = "";
     if (req.has_param("username")) {
@@ -91,57 +85,93 @@ void receivermain::fetch_search(const httplib::Request& req, httplib::Response& 
 
 void receivermain::fetch_search_update(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::fetch_search_update");
 }
 
 void receivermain::manage_account(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::manage_account");
 }
 
 void receivermain::manage_payment(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::manage_payment");
 }
 
 void receivermain::manage_booking(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::manage_booking");
 }
 
 void receivermain::delete_account(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::delete_account");
 }
 
 
 void receivermain::save_doc(const httplib::Request& req, httplib::Response& res)
 { 
-    std::string str_doc = "";
-    std::string str_path = "";
-    if (req.has_param("doc")) {
-        str_doc = req.get_param_value("doc");
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::save_doc");
+    const auto& files = req.files;
+
+    auto it = files.find("file");
+    if (it != files.end()) {
+        const auto& file = it->second;
+
+        std::ofstream out("/app/" + file.filename, std::ios::binary);
+        if (out.is_open()) {
+            out << file.content;
+            out.close();
+
+            res.set_content("File uploaded successfully: " + file.filename, "text/plain");
+            Logger::getInstance()->log(Logger::Level::INFO,"File uploaded successfully.");
+        } else {
+            res.status = 500;
+            res.set_content("Failed to save file.", "text/plain");
+            Logger::getInstance()->log(Logger::Level::ERRR,"Failed to save file.");
+        }
+    } else {
+        res.status = 400;
+        res.set_content("No file found in the request.", "text/plain");
+        Logger::getInstance()->log(Logger::Level::WARNING,"No file found in the request.");
     }
 	
-	
-    if (req.has_param("find")) {
-        str_path = req.get_param_value("find");
-    }
-	
-	if(str_path != "") {
-		//std::string str_res = trav_print(str_path);
-        std::string str_res = "";
-        
+    /*     
         fs::path currentPath = fs::current_path();  // Gets the working directory
         fs::path canonicalPath = fs::canonical(currentPath);  // Resolves symlinks etc.
-
-        str_res = "CurP : " + currentPath.string() + ", CanP :" + canonicalPath.string();
-
-		res.set_content(str_res.c_str(), "text/plain");
-	}
-	else { 
-		res.set_content("No path", "text/plain");
-    }
+    */
 }
 
 
 void receivermain::load_doc(const httplib::Request& req, httplib::Response& res)
 {
+    Logger::getInstance()->log(Logger::Level::INFO,"receivermain::load_doc");
+    std::string str_path = "";
+	
+    if (req.has_param("filename")) {
+        str_path = req.get_param_value("filename");
+    }
+    std::string file_path = "/app/" + str_path;  // Your actual file path
+
+    if (!std::filesystem::exists(file_path)) {
+        res.status = 404;
+        res.set_content("File not found", "text/plain");
+        Logger::getInstance()->log(Logger::Level::WARNING,"File not found.");
+        return;
+    }
+
+    std::ifstream file(file_path, std::ios::binary);
+    if (!file.is_open()) {
+        res.status = 500;
+        res.set_content("Failed to open file", "text/plain");
+        Logger::getInstance()->log(Logger::Level::ERRR,"Failed to open file.");
+        return;
+    }
+
+    std::string file_content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    res.set_content(file_content, "application/octet-stream");
+    res.set_header("Content-Disposition", "attachment; filename=\"" + str_path + "\"");
 }
 
 

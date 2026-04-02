@@ -1,5 +1,6 @@
 #pragma once
 #include "httplib/httplib.h"
+#include "auth/SignInSignUp.h"
 class receivermain
 {
 	// HTTP
@@ -21,12 +22,10 @@ protected:
 	void load_doc(const httplib::Request& req, httplib::Response& res);
 
 
+	SignInSignUp* m_auth;
 public:
 	receivermain();
-
 	void receiver_controller();
-
-
 	virtual ~receivermain();
 };
 
