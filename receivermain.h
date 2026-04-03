@@ -1,6 +1,8 @@
 #pragma once
 #include "httplib/httplib.h"
 #include "auth/SignInSignUp.h"
+#include "compare/CompareHandler.h"
+
 class receivermain
 {
 	// HTTP
@@ -20,9 +22,10 @@ protected:
 	void delete_account(const httplib::Request& req, httplib::Response& res);
 	void save_doc(const httplib::Request& req, httplib::Response& res);
 	void load_doc(const httplib::Request& req, httplib::Response& res);
+	void compare_doc(const httplib::Request& req, httplib::Response& res);
 
-
-	SignInSignUp* m_auth;
+	SignInSignUp*   m_auth;
+	CompareHandler* m_compare;
 public:
 	receivermain();
 	void receiver_controller();

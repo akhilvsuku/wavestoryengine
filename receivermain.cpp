@@ -15,11 +15,28 @@ receivermain::receivermain()
     // initialize authentication handler with MySQL store
     auto store = std::make_unique<MySqlUserStore>("localhost", "dbuser", "dbpass", "dbname");
     m_auth = new SignInSignUp(std::move(store));
+    m_compare = new CompareHandler();
 }
 
 void receivermain::receiver_controller()
 {
     Logger::getInstance()->log(Logger::Level::INFO,"receivermain::receiver_controller");
+
+    // CORS: allow requests from the frontend dev server and any local origin.
+    // Handles the browser preflight OPTIONS request for POST /compare.
+    m_svr.Options(".*", [](const httplib::Request&, httplib::Response& res) {
+        res.set_header("Access-Control-Allow-Origin",  "*");
+        res.set_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        res.status = 204;
+    });
+
+    m_svr.set_default_headers({
+        {"Access-Control-Allow-Origin",  "*"},
+        {"Access-Control-Allow-Methods", "GET, POST, OPTIONS"},
+        {"Access-Control-Allow-Headers", "Content-Type, Authorization"}
+    });
+
     m_svr.Get("/version", [this](const httplib::Request& req, httplib::Response& res) {
         process_version( req, res);
         });
@@ -39,6 +56,9 @@ void receivermain::receiver_controller()
             singin_signup(req, res);
         });
 
+    m_svr.Post("/compare", [this](const httplib::Request& req, httplib::Response& res) {
+        compare_doc(req, res);
+    });
 
     m_svr.listen("0.0.0.0", 8080);
 }
@@ -175,6 +195,13 @@ void receivermain::load_doc(const httplib::Request& req, httplib::Response& res)
 }
 
 
+void receivermain::compare_doc(const httplib::Request& req, httplib::Response& res)
+{
+    m_compare->handle(req, res);
+}
+
 receivermain::~receivermain()
 {
+    delete m_compare;
+    delete m_auth;
 }
