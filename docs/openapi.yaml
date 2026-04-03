@@ -1,0 +1,74 @@
+openapi: "3.0.3"
+info:
+  title: WaveStory Engine API
+  version: "1.0.0"
+paths:
+  /compare:
+    post:
+      summary: Compute character-level diff between two texts
+      description: >
+        Accepts two text strings, runs diff_main + diff_cleanupSemantic via the
+        dmp library, and returns a flat array of diff operations. EQUAL spans are
+        included so the client can reconstruct the full document with annotations.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [text1, text2]
+              properties:
+                text1:
+                  type: string
+                  maxLength: 1000000
+                  description: Original (left) text
+                text2:
+                  type: string
+                  maxLength: 1000000
+                  description: Modified (right) text
+      responses:
+        "200":
+          description: Diff computed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [diffs]
+                properties:
+                  diffs:
+                    type: array
+                    items:
+                      type: object
+                      required: [operation, text]
+                      properties:
+                        operation:
+                          type: string
+                          enum: [INSERT, DELETE, EQUAL]
+                        text:
+                          type: string
+              example:
+                diffs:
+                  - { operation: EQUAL,  text: "Hello " }
+                  - { operation: DELETE, text: "world" }
+                  - { operation: INSERT, text: "WaveStory" }
+        "400":
+          description: text1 or text2 is missing or empty
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+        "401":
+          description: Missing or invalid Authorization token
+        "500":
+          description: Internal server error during diff computation
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
